@@ -102,7 +102,8 @@ def delete_product(values):
 def update_table(window):
     try:
         df = pd.read_excel('inventory.xlsx')
-        window['table'].update(values=df.values.tolist())
+        df_sorted = df.sort_values(by='prod_id')  # เรียงข้อมูลตามคอลัมน์ 'prod_id'
+        window['table'].update(values=df_sorted.values.tolist())
     except FileNotFoundError:
         pass
 
