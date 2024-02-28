@@ -1,17 +1,28 @@
-# This is a sample Python script.
+import PySimpleGUI as sg
 
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
+def create_gui_layout():
+    layout = [
+        [sg.Text('รหัสสินค้า'), sg.InputText(key='prod_id')],
+        [sg.Text('ชื่อสินค้า'), sg.InputText(key='part_name')],
+        [sg.Text('จำนวนคงคลัง'), sg.InputText(key='qty')],
+        [sg.Text('ราคา'), sg.InputText(key='price')],
+        [sg.Button('เพิ่มสินค้า'), sg.Button('ค้นหาสินค้า'), sg.Button('แก้ไขสินค้า'), sg.Button('ลบสินค้า')],
+        [sg.Table(values=[], headings=['รหัสสินค้า', 'ชื่อสินค้า', 'จำนวนคงคลัง', 'ราคา'], auto_size_columns=False,
+                  justification='right', key='table', enable_events=True)],
+        [sg.Button('ออก')],
+    ]
+    return layout
 
+def main():
+    sg.theme('LightGreen')
+    window = sg.Window('ระบบคลังสินค้า', create_gui_layout(), resizable=True)
 
-def print_hi(name):
+    while True:
+        event, values = window.read()
+        if event == sg.WIN_CLOSED or event == 'ออก':
+            break
 
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
+    window.close()
 
-
-# Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    print_hi('PyCharm')
-
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+    main()
