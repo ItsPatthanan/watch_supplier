@@ -13,14 +13,15 @@ else:
     df = pd.DataFrame(columns=columns)
 
 # สร้าง GUI
+sg.theme('DarkBlue17')
 layout = [
-    [sg.Text('ระบบคลังสินค้า', font=('Helvetica', 20))],
+    [sg.Text('ระบบสต๊อกสินค้าอะไหล่นาฬิกาปลอม', font=('prompt', 20))],
     [sg.Button('เพิ่มสินค้า'), sg.Button('ค้นหาสินค้า'), sg.Button('แก้ไขข้อมูลสินค้า'), sg.Button('ลบข้อมูลสินค้า')],
     [sg.Table(values=df.values.tolist(), headings=columns, auto_size_columns=False, justification='right',
               key='-TABLE-', display_row_numbers=False, col_widths=[10, 20, 10, 10])],
 ]
 
-window = sg.Window('Inventory System', layout)
+window = sg.Window('Fake watch spare parts', layout)
 
 
 def add_product(values):
