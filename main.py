@@ -11,15 +11,17 @@ if os.path.exists(file_path):
     df = pd.read_excel(file_path)
 else:
     df = pd.DataFrame(columns=columns)
+
 # สร้าง GUI
-sg.theme('Dark Blue17')
 layout = [
     [sg.Text('ระบบคลังสินค้า', font=('Helvetica', 20))],
     [sg.Button('เพิ่มสินค้า'), sg.Button('ค้นหาสินค้า'), sg.Button('แก้ไขข้อมูลสินค้า'), sg.Button('ลบข้อมูลสินค้า')],
     [sg.Table(values=df.values.tolist(), headings=columns, auto_size_columns=False, justification='right',
               key='-TABLE-', display_row_numbers=False, col_widths=[10, 20, 10, 10])],
 ]
+
 window = sg.Window('Inventory System', layout)
+
 
 def add_product(values):
     global df
@@ -46,6 +48,7 @@ def add_product(values):
     except (ValueError, FileNotFoundError):
         sg.popup_error('กรุณากรอกข้อมูลที่ถูกต้อง')
 
+
 def search_product(search_term):
     global df
     # Convert relevant columns to strings before using .str.contains
@@ -53,24 +56,46 @@ def search_product(search_term):
     df[string_columns] = df[string_columns].astype(str)
 
     result_df = df[(df['prod_id'] == search_term) | (df['part_name'] == search_term)]
+
     # Select only specific columns for display
     result_df = result_df[['prod_id', 'part_name', 'price', 'qty']]
     return result_df
+
+
 def update_product(values):
     global df
     prod_id = values['prod_id']
     update_mask = df['prod_id'] == prod_id
     df.loc[update_mask, ['part_name', 'price', 'qty']] = values['part_name'], values['price'], values['qty']
     df.to_excel(file_path, index=False)
-    window['-TABLE-'].update(values=df.values.tolist())
+    update_table(window['-TABLE-'], df)
     sg.popup('แก้ไขข้อมูลสินค้าเรียบร้อยแล้ว!')
 
-def delete_product(prod_id):
+
+def delete_product(values):
     global df
-    df = df[df['prod_id'] != prod_id]
-    df.to_excel(file_path, index=False)
-    window['-TABLE-'].update(values=df.values.tolist())
-    sg.popup('ลบข้อมูลสินค้าเรียบร้อยแล้ว!')
+    try:
+        df = pd.read_excel('inventory.xlsx')
+
+        # Check if 'delete_prod_id' is in the DataFrame
+        matching_rows = df['prod_id'].astype(str) == values['delete_prod_id']
+
+        if matching_rows.any():
+            index_to_delete = df.index[matching_rows].tolist()[0]
+            df = df.drop(index_to_delete)
+            df.to_excel('inventory.xlsx', index=False)
+            sg.popup_ok('ลบข้อมูลสินค้าเรียบร้อยแล้ว')
+            update_table(window['-TABLE-'], df)
+        else:
+            sg.popup_error('ไม่พบข้อมูลสินค้าที่ต้องการลบ')
+
+    except (FileNotFoundError, IndexError):
+        sg.popup_error('ไม่พบข้อมูลสินค้าหรือข้อมูลที่ใส่ไม่ถูกต้อง')
+
+
+def update_table(table_elem, data_frame):
+    table_elem.update(values=data_frame.values.tolist())
+
 
 while True:
     event, values = window.read()
@@ -152,7 +177,8 @@ while True:
             if delete_event == sg.WIN_CLOSED or delete_event == 'ยกเลิก':
                 break
             elif delete_event == 'ลบ':
-                delete_product(delete_values['delete_prod_id'])
+                delete_product(delete_values)
+                update_table(window['-TABLE-'], df)
                 delete_window.close()
 
 window.close()
