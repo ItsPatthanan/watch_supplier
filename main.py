@@ -52,9 +52,10 @@ def search_product(search_term):
     string_columns = ['prod_id', 'part_name']
     df[string_columns] = df[string_columns].astype(str)
 
-    result_df = df[df['prod_id'].str.contains(search_term) | df['part_name'].str.contains(search_term)]
+    result_df = df[(df['prod_id'] == search_term) | (df['part_name'] == search_term)]
+    # Select only specific columns for display
+    result_df = result_df[['prod_id', 'part_name', 'price', 'qty']]
     return result_df
-
 def update_product(values):
     global df
     prod_id = values['prod_id']
@@ -102,15 +103,21 @@ while True:
             [sg.Button('ค้นหา'), sg.Button('ยกเลิก')]
         ]
         search_window = sg.Window('ค้นหาสินค้า', search_layout)
-
         while True:
             search_event, search_values = search_window.read()
-
             if search_event == sg.WIN_CLOSED or search_event == 'ยกเลิก':
                 break
             elif search_event == 'ค้นหา':
+                if not search_values['search_term']:
+                    sg.popup_error('กรุณากรอกข้อมูลค้นหา')
+                    continue
                 result = search_product(search_values['search_term'])
-                sg.popup(result)
+                if result.empty:
+                    sg.popup_error('ไม่พบข้อมูลสินค้าที่ค้นหา')
+                    continue
+                # Convert DataFrame to string without index
+                result_str = result.to_string(index=False)
+                sg.popup(result_str)
                 search_window.close()
 
     elif event == 'แก้ไขข้อมูลสินค้า':
