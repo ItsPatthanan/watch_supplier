@@ -1,111 +1,151 @@
 import PySimpleGUI as sg
 import pandas as pd
+import os
 
-def get_next_prod_id():
-    try:
-        df = pd.read_excel('inventory.xlsx')
-        if not df.empty:
-            return df['prod_id'].max() + 1
-        else:
-            return 1
-    except FileNotFoundError:
-        return 1
+# กำหนดโครงสร้างข้อมูลใน DataFrame
+columns = ['prod_id', 'part_name', 'price', 'qty']
+file_path = os.path.join(os.getcwd(), 'inventory.xlsx')
 
-def create_gui_layout():
-    layout = [
-        [sg.Text('รหัสสินค้า'), sg.InputText(key='prod_id')],
-        [sg.Text('ชื่อสินค้า'), sg.InputText(key='part_name')],
-        [sg.Text('จำนวนคงคลัง'), sg.InputText(key='qty')],
-        [sg.Text('ราคา'), sg.InputText(key='price')],
-        [sg.Button('เพิ่มสินค้า'), sg.Button('ค้นหาสินค้า'), sg.Button('แก้ไขสินค้า'), sg.Button('ลบสินค้า')],
-        [sg.Table(values=[], headings=['รหัสสินค้า', 'ชื่อสินค้า', 'จำนวนคงคลัง', 'ราคา'], auto_size_columns=False,
-                  justification='right', key='table', enable_events=True)],
-        [sg.Button('ออก')],
-    ]
-    return layout
-
-def main():
-    sg.theme('LightGreen')
-    window = sg.Window('ระบบคลังสินค้า', create_gui_layout(), resizable=True, finalize=True)
-
-    update_table(window)  # อัปเดต Table เมื่อโปรแกรมเริ่มต้น
-
-    while True:
-        event, values = window.read()
-
-        if event == sg.WIN_CLOSED or event == 'ออก':
-            break
-        elif event == 'เพิ่มสินค้า':
-            add_product(values)
-            update_table(window)
-        elif event == 'ค้นหาสินค้า':
-            search_product(values)
-        elif event == 'แก้ไขสินค้า':
-            edit_product(values)
-            update_table(window)
-        elif event == 'ลบสินค้า':
-            delete_product(values)
-            update_table(window)
-
-    window.close()
+# ตรวจสอบว่ามีไฟล์ inventory.xlsx อยู่หรือไม่
+if os.path.exists(file_path):
+    df = pd.read_excel(file_path)
+else:
+    df = pd.DataFrame(columns=columns)
+# สร้าง GUI
+sg.theme('Dark Blue17')
+layout = [
+    [sg.Text('ระบบคลังสินค้า', font=('Helvetica', 20))],
+    [sg.Button('เพิ่มสินค้า'), sg.Button('ค้นหาสินค้า'), sg.Button('แก้ไขข้อมูลสินค้า'), sg.Button('ลบข้อมูลสินค้า')],
+    [sg.Table(values=df.values.tolist(), headings=columns, auto_size_columns=False, justification='right',
+              key='-TABLE-', display_row_numbers=False, col_widths=[10, 20, 10, 10])],
+]
+window = sg.Window('Inventory System', layout)
 
 def add_product(values):
-    data = {'prod_id': [values['prod_id']],
-            'part_name': [values['part_name']],
-            'qty': [values['qty']],
-            'price': [values['price']]}
-    df = pd.DataFrame(data)
+    global df
+
+    # ตรวจสอบข้อมูลไม่ครบ
+    if not all(values.values()):
+        sg.popup_error('กรุณากรอกข้อมูลให้ครบทุกช่อง')
+        return
+
+    new_prod_id = values['prod_id']
+
+    # ตรวจสอบว่า ID ซ้ำหรือไม่
+    if new_prod_id in df['prod_id'].values:
+        sg.popup_error('รหัสสินค้านี้มีอยู่แล้ว กรุณาใส่รหัสสินค้าที่ไม่ซ้ำกัน')
+        return
+
+    new_product = pd.DataFrame([values], columns=columns)
+    df = pd.concat([df, new_product], ignore_index=True)
 
     try:
-        existing_df = pd.read_excel('inventory.xlsx')
-        updated_df = pd.concat([existing_df, df], ignore_index=True)
-    except FileNotFoundError:
-        updated_df = df
+        df.to_excel(file_path, index=False)
+        window['-TABLE-'].update(values=df.values.tolist())
+        sg.popup('บันทึกสินค้าเรียบร้อยแล้ว!')
+    except (ValueError, FileNotFoundError):
+        sg.popup_error('กรุณากรอกข้อมูลที่ถูกต้อง')
 
-    updated_df.to_excel('inventory.xlsx', index=False)
+def search_product(search_term):
+    global df
+    # Convert relevant columns to strings before using .str.contains
+    string_columns = ['prod_id', 'part_name']
+    df[string_columns] = df[string_columns].astype(str)
 
-def search_product(values):
-    try:
-        df = pd.read_excel('inventory.xlsx')
-        result = df[(df['prod_id'] == values['prod_id']) | (df['part_name'] == values['part_name'])]
-        sg.popup_ok('ผลลัพธ์การค้นหา:\n\n' + result.to_string(index=False))
-    except FileNotFoundError:
-        sg.popup_error('ไม่พบไฟล์ inventory.xlsx')
+    result_df = df[df['prod_id'].str.contains(search_term) | df['part_name'].str.contains(search_term)]
+    return result_df
 
-def edit_product(values):
-    try:
-        df = pd.read_excel('inventory.xlsx')
-        index_to_edit = df.index[(df['prod_id'] == values['prod_id']) | (df['part_name'] == values['part_name'])].tolist()[0]
+def update_product(values):
+    global df
+    prod_id = values['prod_id']
+    update_mask = df['prod_id'] == prod_id
+    df.loc[update_mask, ['part_name', 'price', 'qty']] = values['part_name'], values['price'], values['qty']
+    df.to_excel(file_path, index=False)
+    window['-TABLE-'].update(values=df.values.tolist())
+    sg.popup('แก้ไขข้อมูลสินค้าเรียบร้อยแล้ว!')
 
-        column_to_edit = sg.popup_get_text('กรุณาเลือกคอลัมน์ที่ต้องการแก้ไข (prod_id, part_name, qty, price)')
-        new_value = sg.popup_get_text('กรุณาใส่ค่าใหม่')
+def delete_product(prod_id):
+    global df
+    df = df[df['prod_id'] != prod_id]
+    df.to_excel(file_path, index=False)
+    window['-TABLE-'].update(values=df.values.tolist())
+    sg.popup('ลบข้อมูลสินค้าเรียบร้อยแล้ว!')
 
-        df.at[index_to_edit, column_to_edit] = new_value
-        df.to_excel('inventory.xlsx', index=False)
+while True:
+    event, values = window.read()
 
-        sg.popup_ok('แก้ไขข้อมูลสินค้าเรียบร้อยแล้ว')
-    except (FileNotFoundError, IndexError):
-        sg.popup_error('ไม่พบข้อมูลสินค้าหรือข้อมูลที่ใส่ไม่ถูกต้อง')
+    if event == sg.WIN_CLOSED:
+        break
+    elif event == 'เพิ่มสินค้า':
+        add_layout = [
+            [sg.Text('รหัสสินค้า:'), sg.Input(key='prod_id')],
+            [sg.Text('ชื่อสินค้า:'), sg.Input(key='part_name')],
+            [sg.Text('ราคา:'), sg.Input(key='price')],
+            [sg.Text('จำนวนคงคลัง:'), sg.Input(key='qty')],
+            [sg.Button('บันทึก'), sg.Button('ยกเลิก')]
+        ]
+        add_window = sg.Window('เพิ่มสินค้า', add_layout)
 
-def delete_product(values):
-    try:
-        df = pd.read_excel('inventory.xlsx')
-        index_to_delete = df.index[(df['prod_id'] == values['prod_id']) | (df['part_name'] == values['part_name'])].tolist()[0]
+        while True:
+            add_event, add_values = add_window.read()
 
-        df = df.drop(index_to_delete)
-        df.to_excel('inventory.xlsx', index=False)
+            if add_event == sg.WIN_CLOSED or add_event == 'ยกเลิก':
+                add_window.close()
+                break
+            elif add_event == 'บันทึก':
+                add_product(add_values)
+                add_window.close()
 
-        sg.popup_ok('ลบข้อมูลสินค้าเรียบร้อยแล้ว')
-    except (FileNotFoundError, IndexError):
-        sg.popup_error('ไม่พบข้อมูลสินค้าหรือข้อมูลที่ใส่ไม่ถูกต้อง')
+    elif event == 'ค้นหาสินค้า':
+        search_layout = [
+            [sg.Text('ค้นหา (รหัสสินค้า หรือ ชื่อสินค้า):'), sg.Input(key='search_term')],
+            [sg.Button('ค้นหา'), sg.Button('ยกเลิก')]
+        ]
+        search_window = sg.Window('ค้นหาสินค้า', search_layout)
 
-def update_table(window):
-    try:
-        df = pd.read_excel('inventory.xlsx')
-        df_sorted = df.sort_values(by='prod_id')  # เรียงข้อมูลตามคอลัมน์ 'prod_id'
-        window['table'].update(values=df_sorted.values.tolist())
-    except FileNotFoundError:
-        pass
+        while True:
+            search_event, search_values = search_window.read()
 
-if __name__ == '__main__':
-    main()
+            if search_event == sg.WIN_CLOSED or search_event == 'ยกเลิก':
+                break
+            elif search_event == 'ค้นหา':
+                result = search_product(search_values['search_term'])
+                sg.popup(result)
+                search_window.close()
+
+    elif event == 'แก้ไขข้อมูลสินค้า':
+        update_layout = [
+            [sg.Text('รหัสสินค้าที่ต้องการแก้ไข:'), sg.Input(key='prod_id')],
+            [sg.Text('ชื่อสินค้า:'), sg.Input(key='part_name')],
+            [sg.Text('ราคา:'), sg.Input(key='price')],
+            [sg.Text('จำนวนคงคลัง:'), sg.Input(key='qty')],
+            [sg.Button('บันทึก'), sg.Button('ยกเลิก')]
+        ]
+        update_window = sg.Window('แก้ไขข้อมูลสินค้า', update_layout)
+
+        while True:
+            update_event, update_values = update_window.read()
+
+            if update_event == sg.WIN_CLOSED or update_event == 'ยกเลิก':
+                break
+            elif update_event == 'บันทึก':
+                update_product(update_values)
+                update_window.close()
+
+    elif event == 'ลบข้อมูลสินค้า':
+        delete_layout = [
+            [sg.Text('รหัสสินค้าที่ต้องการลบ:'), sg.Input(key='delete_prod_id')],
+            [sg.Button('ลบ'), sg.Button('ยกเลิก')]
+        ]
+        delete_window = sg.Window('ลบข้อมูลสินค้า', delete_layout)
+
+        while True:
+            delete_event, delete_values = delete_window.read()
+
+            if delete_event == sg.WIN_CLOSED or delete_event == 'ยกเลิก':
+                break
+            elif delete_event == 'ลบ':
+                delete_product(delete_values['delete_prod_id'])
+                delete_window.close()
+
+window.close()
