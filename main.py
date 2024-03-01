@@ -60,20 +60,25 @@ def search_product(search_term):
     # Select only specific columns for display
     result_df = result_df[['prod_id', 'part_name', 'price', 'qty']]
     return result_df
-
-
 def update_product(values):
     global df
     prod_id = values['prod_id']
-    update_mask = df['prod_id'] == prod_id
-    df.loc[update_mask, ['part_name', 'price', 'qty']] = values['part_name'], values['price'], values['qty']
-    df.to_excel(file_path, index=False)
-    update_table(window['-TABLE-'], df)
-    sg.popup('แก้ไขข้อมูลสินค้าเรียบร้อยแล้ว!')
+    update_mask = df['prod_id'].astype(str) == prod_id
 
+    if update_mask.any():
+        # Convert values to the appropriate data type
+        part_name = str(values['part_name'])
+        price = int(values['price'])
+        qty = int(values['qty'])
+
+        df.loc[update_mask, ['part_name', 'price', 'qty']] = part_name, price, qty
+        df.to_excel(file_path, index=False)
+        update_table(window['-TABLE-'], df)
+        sg.popup('แก้ไขข้อมูลสินค้าเรียบร้อยแล้ว!')
+    else:
+        sg.popup_error('ไม่พบข้อมูลสินค้าที่ต้องการแก้ไข')
 
 def delete_product(values):
-    global df
     try:
         df = pd.read_excel('inventory.xlsx')
 
@@ -84,8 +89,8 @@ def delete_product(values):
             index_to_delete = df.index[matching_rows].tolist()[0]
             df = df.drop(index_to_delete)
             df.to_excel('inventory.xlsx', index=False)
-            sg.popup_ok('ลบข้อมูลสินค้าเรียบร้อยแล้ว')
             update_table(window['-TABLE-'], df)
+            sg.popup_ok('ลบข้อมูลสินค้าเรียบร้อยแล้ว')
         else:
             sg.popup_error('ไม่พบข้อมูลสินค้าที่ต้องการลบ')
 
@@ -131,6 +136,7 @@ while True:
         while True:
             search_event, search_values = search_window.read()
             if search_event == sg.WIN_CLOSED or search_event == 'ยกเลิก':
+                search_window.close()
                 break
             elif search_event == 'ค้นหา':
                 if not search_values['search_term']:
@@ -159,6 +165,7 @@ while True:
             update_event, update_values = update_window.read()
 
             if update_event == sg.WIN_CLOSED or update_event == 'ยกเลิก':
+                update_window.close()
                 break
             elif update_event == 'บันทึก':
                 update_product(update_values)
@@ -175,10 +182,10 @@ while True:
             delete_event, delete_values = delete_window.read()
 
             if delete_event == sg.WIN_CLOSED or delete_event == 'ยกเลิก':
+                delete_window.close()
                 break
             elif delete_event == 'ลบ':
                 delete_product(delete_values)
-                update_table(window['-TABLE-'], df)
                 delete_window.close()
 
 window.close()
