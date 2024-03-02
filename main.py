@@ -12,21 +12,24 @@ if os.path.exists(file_path):
 else:
     df = pd.DataFrame(columns=columns)
 
-# สร้าง GUI
+P_font = ("prompt", 12)
+H_font = ("prompt", 16, "bold")
 sg.theme('DarkBlue17')
-layout = [
-    [sg.Text('ระบบสต๊อกสินค้าอะไหล่นาฬิกาปลอม', font=('prompt', 20))],
-    [sg.Button('เพิ่มสินค้า'), sg.Button('ค้นหาสินค้า'), sg.Button('แก้ไขข้อมูลสินค้า'), sg.Button('ลบข้อมูลสินค้า')],
+# สร้าง GUI
+frame_main = [
+    [sg.HorizontalSeparator(color='red')],
+    [sg.Button('เพิ่มสินค้า', font=P_font), sg.Button('ค้นหาสินค้า', font=P_font),
+     sg.Button('แก้ไขข้อมูลสินค้า', font=P_font), sg.Button('ลบข้อมูลสินค้า', font=P_font)],
+    [sg.HorizontalSeparator(color='red')],
     [sg.Table(values=df.values.tolist(), headings=columns, auto_size_columns=False, justification='right',
-              key='-TABLE-', display_row_numbers=False, col_widths=[10, 20, 10, 10])],
+              key='-TABLE-', display_row_numbers=False, col_widths=[10, 20, 10, 10], font=P_font)]
 ]
-
+frame_outline = [[sg.Frame('', frame_main, element_justification='center', border_width=0)]]
+layout = [[sg.Frame('ระบบสต๊อกสินค้าอะไหล่นาฬิกาปลอม', frame_outline, font=H_font)]]
 window = sg.Window('Fake watch spare parts', layout)
-
 
 def add_product(values):
     global df
-
     # ตรวจสอบข้อมูลไม่ครบ
     if not all(values.values()):
         sg.popup_error('กรุณากรอกข้อมูลให้ครบทุกช่อง')
@@ -61,6 +64,8 @@ def search_product(search_term):
     # Select only specific columns for display
     result_df = result_df[['prod_id', 'part_name', 'price', 'qty']]
     return result_df
+
+
 def update_product(values):
     global df
     prod_id = values['prod_id']
@@ -78,6 +83,7 @@ def update_product(values):
         sg.popup('แก้ไขข้อมูลสินค้าเรียบร้อยแล้ว!')
     else:
         sg.popup_error('ไม่พบข้อมูลสินค้าที่ต้องการแก้ไข')
+
 
 def delete_product(values):
     try:
