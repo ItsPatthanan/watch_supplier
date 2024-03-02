@@ -86,8 +86,10 @@ def update_product(values):
 
 
 def delete_product(values):
+    global df
+
     try:
-        df = pd.read_excel('inventory.xlsx')
+        df = pd.read_excel(file_path)
 
         # Check if 'delete_prod_id' is in the DataFrame
         matching_rows = df['prod_id'].astype(str) == values['delete_prod_id']
@@ -95,7 +97,7 @@ def delete_product(values):
         if matching_rows.any():
             index_to_delete = df.index[matching_rows].tolist()[0]
             df = df.drop(index_to_delete)
-            df.to_excel('inventory.xlsx', index=False)
+            df.to_excel(file_path, index=False)
             update_table(window['-TABLE-'], df)
             sg.popup_ok('ลบข้อมูลสินค้าเรียบร้อยแล้ว')
         else:
@@ -104,10 +106,8 @@ def delete_product(values):
     except (FileNotFoundError, IndexError):
         sg.popup_error('ไม่พบข้อมูลสินค้าหรือข้อมูลที่ใส่ไม่ถูกต้อง')
 
-
 def update_table(table_elem, data_frame):
     table_elem.update(values=data_frame.values.tolist())
-
 
 while True:
     event, values = window.read()
@@ -194,5 +194,6 @@ while True:
             elif delete_event == 'ลบ':
                 delete_product(delete_values)
                 delete_window.close()
+
 
 window.close()
