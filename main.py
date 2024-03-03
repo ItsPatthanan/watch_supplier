@@ -15,7 +15,7 @@ else:
 P_font = ("prompt", 12)
 H_font = ("prompt", 16, "bold")
 sg.theme('DarkBlue17')
-
+print("hello watch")
 # สร้าง GUI
 frame_main = [
     [sg.HorizontalSeparator(color='red')],
