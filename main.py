@@ -15,7 +15,7 @@ else:
 P_font = ("prompt", 12)
 H_font = ("prompt", 16, "bold")
 sg.theme('DarkBlue17')
-print("hello watch")
+
 # สร้าง GUI
 frame_main = [
     [sg.HorizontalSeparator(color='red')],
@@ -30,7 +30,6 @@ frame_outline = [[sg.Frame('', frame_main, element_justification='center', borde
 layout = [[sg.Frame('ระบบสต๊อกสินค้าอะไหล่นาฬิกาปลอม', frame_outline, font=H_font)]]
 
 window = sg.Window('Fake watch spare parts', layout)
-
 def add_product(values):
     global df
     if not all(values.values()):
@@ -46,11 +45,15 @@ def add_product(values):
     df = pd.concat([df, new_product], ignore_index=True)
 
     try:
+        df['prod_id'] = df['prod_id'].astype(int)  # แปลง 'prod_id' เป็นตัวเลข
+        df = df.sort_values(by='prod_id')  # เรียงข้อมูลตาม 'prod_id'
         df.to_excel(file_path, index=False)
-        window['-TABLE-'].update(values=df.values.tolist())
+        update_table(window['-TABLE-'], df)
         sg.popup('บันทึกสินค้าเรียบร้อยแล้ว!')
     except (ValueError, FileNotFoundError):
         sg.popup_error('กรุณากรอกข้อมูลที่ถูกต้อง')
+
+
 
 def search_product(search_term):
     global df
@@ -59,22 +62,23 @@ def search_product(search_term):
     result_df = df[(df['prod_id'] == search_term) | (df['part_name'] == search_term)]
     result_df = result_df[['prod_id', 'part_name', 'category', 'price', 'qty']]
     return result_df
+
 def update_product(values):
     global df
     prod_id = values['prod_id']
     update_mask = df['prod_id'].astype(str) == prod_id
     if update_mask.any():
         part_name = str(values['part_name'])
-        category = str(values['category'])  # Added line to get the category
+        category = str(values['category'])  # เพิ่มบรรทัดเพื่อดึงค่า 'category'
         price = int(values['price'])
         qty = int(values['qty'])
         df.loc[update_mask, ['part_name', 'category', 'price', 'qty']] = part_name, category, price, qty
+        df = df.sort_values(by='prod_id')  # เรียงข้อมูลตาม 'prod_id'
         df.to_excel(file_path, index=False)
         update_table(window['-TABLE-'], df)
         sg.popup('แก้ไขข้อมูลสินค้าเรียบร้อยแล้ว!')
     else:
         sg.popup_error('ไม่พบข้อมูลสินค้าที่ต้องการแก้ไข')
-
 
 def delete_product(values):
     global df
@@ -84,6 +88,7 @@ def delete_product(values):
         if matching_rows.any():
             index_to_delete = df.index[matching_rows].tolist()[0]
             df = df.drop(index_to_delete)
+            df = df.sort_values(by='prod_id')  # เรียงข้อมูลตาม 'prod_id'
             df.to_excel(file_path, index=False)
             update_table(window['-TABLE-'], df)
             sg.popup_ok('ลบข้อมูลสินค้าเรียบร้อยแล้ว')
@@ -91,6 +96,7 @@ def delete_product(values):
             sg.popup_error('ไม่พบข้อมูลสินค้าที่ต้องการลบ')
     except (FileNotFoundError, IndexError):
         sg.popup_error('ไม่พบข้อมูลสินค้าหรือข้อมูลที่ใส่ไม่ถูกต้อง')
+
 def update_table(table_elem, data_frame):
     table_elem.update(values=data_frame.values.tolist())
 
@@ -177,4 +183,5 @@ while True:
             elif delete_event == 'ลบ':
                 delete_product(delete_values)
                 delete_window.close()
+
 window.close()
