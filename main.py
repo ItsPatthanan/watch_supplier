@@ -25,9 +25,9 @@ frame_main = [
 ]
 
 frame_outline = [[sg.Frame('', frame_main, element_justification='center', border_width=0)]]
-layout = [[sg.Frame('ระบบสต๊อกสินค้าอะไหล่นาฬิกาปลอม', frame_outline, font=H_font)]]
+layout = [[sg.Frame('ระบบสต๊อกสินค้าอะไหล่นาฬิกา', frame_outline, font=H_font)]]
 
-window = sg.Window('Fake watch spare parts', layout)
+window = sg.Window('Watch spare parts', layout)
 
 def add_product(values):
     global df
