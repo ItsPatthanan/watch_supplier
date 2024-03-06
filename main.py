@@ -14,11 +14,16 @@ P_font = ("prompt", 12)
 H_font = ("prompt", 16, "bold")
 input_w = 20
 sg.theme('DarkBlue14')
+btn_color_critical = "red"
+btn_color_success = "green"
+btn_color_warning = "orange"
+
 
 frame_main = [
     [sg.HorizontalSeparator(color='red')],
     [sg.Button('เพิ่มสินค้า', font=P_font), sg.Button('ค้นหาสินค้า', font=P_font),
-     sg.Button('แก้ไขข้อมูลสินค้า', font=P_font), sg.Button('ลบข้อมูลสินค้า', font=P_font)],
+     sg.Button('แก้ไขข้อมูลสินค้า', font=P_font),sg.Button('ขายสินค้า', font=P_font,button_color=btn_color_warning),
+     sg.Button('ลบข้อมูลสินค้า', font=P_font,button_color=btn_color_critical)],
     [sg.HorizontalSeparator(color='red')],
     [sg.Table(values=df.values.tolist(), headings=columns, auto_size_columns=False, justification='right',
               key='-TABLE-', display_row_numbers=False, col_widths=[10, 20, 10, 10, 10], font=P_font)]
@@ -90,6 +95,31 @@ def delete_product(values):
             sg.popup_error('ไม่พบข้อมูลสินค้าที่ต้องการลบ')
     except (FileNotFoundError, IndexError):
         sg.popup_error('ไม่พบข้อมูลสินค้าหรือข้อมูลที่ใส่ไม่ถูกต้อง')
+def sell_product(values):
+    global df
+    try:
+        prod_id = int(values['sell_prod_id'])
+        qty_to_sell = int(values['sell_qty'])
+
+        matching_rows = df['prod_id'] == prod_id
+        if matching_rows.any():
+            current_qty = df.loc[matching_rows, 'qty'].iloc[0]
+            if qty_to_sell <= current_qty:
+                new_qty = current_qty - qty_to_sell
+                if new_qty > 0:
+                    df.loc[matching_rows, 'qty'] = new_qty
+                else:
+                    df = df.drop(df.index[matching_rows])
+                df = df.sort_values(by='prod_id')
+                df.to_excel(file_path, index=False)
+                update_table(window['-TABLE-'], df)
+                sg.popup('การขายสินค้าเสร็จสิ้น!')
+            else:
+                sg.popup_error('จำนวนสินค้าไม่เพียงพอสำหรับการขาย')
+        else:
+            sg.popup_error('ไม่พบสินค้าที่ต้องการขาย')
+    except ValueError:
+        sg.popup_error('กรุณากรอกรหัสสินค้าและจำนวนที่ต้องการขายให้ถูกต้อง')
 def update_table(table_elem, data_frame):
     table_elem.update(values=data_frame.values.tolist())
 
@@ -105,7 +135,7 @@ while True:
             [sg.Text('หมวดหมู่:', size=(15, 1)), sg.Combo(category_choices, key='category', size=(input_w, 1))],
             [sg.Text('ราคา:', size=(15, 1)), sg.Input(key='price', size=(input_w, 1))],
             [sg.Text('จำนวนคงคลัง:', size=(15, 1)), sg.Input(key='qty', size=(input_w, 1))],
-            [sg.Button('บันทึก'), sg.Button('ยกเลิก')]
+            [sg.Button('บันทึก',button_color=btn_color_success), sg.Button('ยกเลิก',button_color=btn_color_critical)]
         ]
         add_window = sg.Window('เพิ่มสินค้า', add_layout)
 
@@ -121,7 +151,7 @@ while True:
     elif event == 'ค้นหาสินค้า':
         search_layout = [
             [sg.Text('ค้นหา (รหัสสินค้า หรือ ชื่อสินค้า):'), sg.Input(key='search_term', size=(input_w, 1))],
-            [sg.Button('ค้นหา'), sg.Button('ยกเลิก')]
+            [sg.Button('ค้นหา', button_color=btn_color_success), sg.Button('ยกเลิก', button_color=btn_color_critical)]
         ]
         search_window = sg.Window('ค้นหาสินค้า', search_layout)
         while True:
@@ -149,7 +179,7 @@ while True:
             [sg.Text('หมวดหมู่:', size=(15, 1)), sg.Combo(category_choices, key='category', size=(input_w, 1))],
             [sg.Text('ราคา:', size=(15, 1)), sg.Input(key='price', size=(input_w, 1))],
             [sg.Text('จำนวนคงคลัง:', size=(15, 1)), sg.Input(key='qty', size=(input_w, 1))],
-            [sg.Button('บันทึก'), sg.Button('ยกเลิก')]
+            [sg.Button('บันทึก', button_color=btn_color_success), sg.Button('ยกเลิก', button_color=btn_color_critical)]
         ]
         update_window = sg.Window('แก้ไขข้อมูลสินค้า', update_layout)
 
@@ -165,7 +195,7 @@ while True:
     elif event == 'ลบข้อมูลสินค้า':
         delete_layout = [
             [sg.Text('รหัสสินค้าที่ต้องการลบ:'), sg.Input(key='delete_prod_id', size=(input_w, 1))],
-            [sg.Button('ลบ'), sg.Button('ยกเลิก')]
+            [sg.Button('ลบ', button_color=btn_color_warning), sg.Button('ยกเลิก', button_color=btn_color_critical)]
         ]
         delete_window = sg.Window('ลบข้อมูลสินค้า', delete_layout)
         while True:
@@ -176,5 +206,21 @@ while True:
             elif delete_event == 'ลบ':
                 delete_product(delete_values)
                 delete_window.close()
+    elif event == 'ขายสินค้า':
+        sell_layout = [
+            [sg.Text('รหัสสินค้าที่ต้องการขาย:', size=(15, 1)), sg.Input(key='sell_prod_id', size=(input_w, 1))],
+            [sg.Text('จำนวนที่ต้องการขาย:', size=(15, 1)), sg.Input(key='sell_qty', size=(input_w, 1))],
+            [sg.Button('ขาย',button_color=btn_color_warning), sg.Button('ยกเลิก',button_color=btn_color_critical)]
+        ]
+        sell_window = sg.Window('ขายสินค้า', sell_layout)
+
+        while True:
+            sell_event, sell_values = sell_window.read()
+            if sell_event == sg.WIN_CLOSED or sell_event == 'ยกเลิก':
+                sell_window.close()
+                break
+            elif sell_event == 'บันทึก':
+                sell_product(sell_values)
+                sell_window.close()
 
 window.close()
